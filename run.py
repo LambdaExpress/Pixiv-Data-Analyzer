@@ -7,11 +7,6 @@ from tqdm import tqdm
 import config
 import os
 
-proxies = {
-    'http': 'http://127.0.0.1:7890',
-    'https': 'http://127.0.0.1:7890'
-}
-
 class PixivDataAnalysis():
 
     def __init__(
@@ -21,6 +16,7 @@ class PixivDataAnalysis():
                     headers_list : list,
                     output_path : str, 
                     default_name : str = None,
+                    proxies = None
                 ):
 
         self.uid = uid
@@ -28,12 +24,13 @@ class PixivDataAnalysis():
         self.path = output_path
         self.headers_list = headers_list
         self.global_index = 0
+        self.proxies = proxies
 
         if not self.path.endswith('/') and not self.path.endswith('\\'):
             self.path += '/'
 
         if default_name == None:
-            text = self.session.get(f'https://www.pixiv.net/users/{self.uid}', headers=self.getHeaders(1), proxies=proxies).text
+            text = self.session.get(f'https://www.pixiv.net/users/{self.uid}', headers=self.getHeaders(1), proxies=self.proxies).text
             self.name = re.findall('meta property="og:title" content="(.*?)"', text)[0]
         else:
             self.name = default_name
@@ -46,7 +43,7 @@ class PixivDataAnalysis():
         return self.headers_list[self.global_index]
     def getUrls(self) -> list:
         illustration_url = f'https://www.pixiv.net/ajax/user/{self.uid}/profile/all'
-        response = self.session.get(illustration_url, headers=self.getHeaders(1), proxies=proxies)
+        response = self.session.get(illustration_url, headers=self.getHeaders(1), proxies=self.proxies)
         response.raise_for_status()
         img_urls = list(response.json()['body']['illusts'].keys())
         return img_urls
@@ -60,7 +57,7 @@ class PixivDataAnalysis():
 
                 while True:
                     try:
-                        text = self.session.get(f'https://www.pixiv.net/artworks/{img_url_num}', headers=self.getHeaders(), proxies=proxies).text
+                        text = self.session.get(f'https://www.pixiv.net/artworks/{img_url_num}', headers=self.getHeaders(), proxies=self.proxies).text
                         view = re.findall('"viewCount":(.*?),', text)[0]
                         bookmarkCount = re.findall('"bookmarkCount":(.*?),"', text)[0]
                         r18 = re.findall('"tag":"(.*?)","locked"', text)[0] if len(re.findall('"tag":"(.*?)","locked"', text)) > 0 else ''
@@ -111,12 +108,15 @@ class PixivDataAnalysis():
 
 def main():
     os.makedirs(config.SAVE_PATH, exist_ok=True)
-
+    proxies = None
+    if config.ENABLE_PROXY:
+        proxies = config.PROXIES
     p = PixivDataAnalysis(  
                             uid=config.UID,
                             headers_list=config.HEADERS_LIST,
                             output_path=config.SAVE_PATH,
-                            default_name=None)
+                            default_name=None,
+                            proxies=proxies)
 
     img_urls = p.getUrls()
     data = p.readData(img_urls)
