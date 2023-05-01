@@ -1,4 +1,4 @@
-HEADERS_LIST = {}
+HEADERS_LIST = []
 SAVE_PATH = 'save/'
 UID = '86114019'
 ENABLE_PROXY = True
