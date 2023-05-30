@@ -126,7 +126,7 @@ class PixivDataAnalysis():
             with tqdm(total=len(urls), leave=False, bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}{postfix}]') as pbar, \
                 concurrent.futures.ThreadPoolExecutor(max_workers=256) as executor:
                 t1 = threading.Thread(target=self.tqdm_keep_alive, args=(pbar, time.time()))
-                t1.setDaemon(True)
+                t1.daemon = True
                 t1.start()
                 futures = [executor.submit(self.read_data_from_url, img_id, index, pbar) 
                            for index, img_id in enumerate(urls)]
