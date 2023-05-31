@@ -1,4 +1,5 @@
 import json
+from math import log, sqrt
 import random
 import threading
 import numpy as np
@@ -36,6 +37,7 @@ class PixivDataAnalysis():
         self.headers_list = [{
             "referer": "https://www.pixiv.net/",
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.48",
+            'baggage' : 'sentry-environment=production,sentry-release=6560f6c82b0cc2220a31afe4ca436a083210e8c7,sentry-public_key=7b15ebdd9cf64efb88cfab93783df02a,sentry-trace_id=4c3c537d81b4413ba200ce44f4f7e51d,sentry-sample_rate=0.0001',
         }]
         self.headers_list = self.headers_list * len(cookies)
         for index, headers in enumerate(self.headers_list):
@@ -51,7 +53,7 @@ class PixivDataAnalysis():
 
         print(f'Uid:{self.uid}, Name:{self.name}')
     def get_headers(self):
-        return self.headers_list[random.randint(0, len(self.headers_list) - 1)]
+        return random.choice(self.headers_list)
     def get_pages(self) -> list:
         illustration_url = f'https://www.pixiv.net/ajax/user/{self.uid}/profile/all'
         response = self.session.get(illustration_url, headers=self.get_headers(), proxies=self.proxies)
@@ -86,7 +88,8 @@ class PixivDataAnalysis():
             view_per_day = int(view) / delta_time * 3600 * 24
             bookmark_ratio = float(bookmarkCount) / float(view) * 100
             is_r18 = r18 == 'R-18'
-
+            view = int(view)
+            point = log(view / sqrt(delta_time) * view / log(view, 2), 2)
             self.data[index] = [
                 url_id,
                 delta_time,
@@ -95,10 +98,11 @@ class PixivDataAnalysis():
                 view_per_day,
                 bookmark_ratio,
                 is_r18,
-                total
+                total,
+                point
             ]
             pbar.update(1)
-        except Exception as e:
+        except:
             if numbe_of_calls != 1:
                 with tqdm(range(120), leave=False) as sleep_pbar:
                     for i in sleep_pbar:
@@ -144,7 +148,7 @@ class PixivDataAnalysis():
             return self.data
     
     def save_data(self, data : dict, log):
-        a_data=pd.DataFrame(columns=('pid', 'delta_time', 'view', 'bookmark', 'view_per_day', 'bookmark_ratio', 'is_r18', 'num_of_pages'))
+        a_data=pd.DataFrame(columns=('pid', 'delta_time', 'view', 'bookmark', 'view_per_day', 'bookmark_ratio', 'is_r18', 'num_of_pages', 'point'))
         for i, (_, value) in enumerate(data.items()):
             a_data.loc[i + 1] = value
         t = time.localtime(time.time())
@@ -246,6 +250,17 @@ class PixivDataAnalysis():
         lower_limit = np.percentile(means, alpha * 100)
         upper_limit = np.percentile(means, (1 - alpha) * 100)
         return lower_limit, upper_limit
+    def show_data(self, data : dict):
+        import matplotlib.pyplot as plt
+        point = [(index + 1, item[8]) for index, item in enumerate(data.values())]
+        x_point = [x[0] for x in point]
+        y_poiny = [x[1] for x in point]
+        plt.plot(x_point, y_poiny)
+        plt.title('Point')
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.show()
+
 
 def main(uid, output_dir, cookie, sleep_time, quick_mode, max_num):
     with open(cookie, 'r') as f:
@@ -269,8 +284,8 @@ def main(uid, output_dir, cookie, sleep_time, quick_mode, max_num):
         img_urls = img_urls[:max_num]
     data = p.read_data_from_urls(img_urls)
     log = p.print_data(data, args.max_num)
+    p.show_data(data)
     p.save_data(data, log)
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--uid', type=str, required=True)
