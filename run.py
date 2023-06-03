@@ -25,11 +25,7 @@ class PixivDataAnalysis():
                     cookies : list,
                     output_path : str, 
                     proxies = None,
-                    sleep_time,
-                    quick_mode = False,
                 ):
-        self.quick_mode = quick_mode
-        self.sleep_time = sleep_time
         self.start_time = time.time()
         self.uid = uid
         self.session = requests.Session()
@@ -146,7 +142,6 @@ class PixivDataAnalysis():
                 )
             }
             return self.data
-    
     def save_data(self, data : dict, log):
         a_data=pd.DataFrame(columns=('pid', 'delta_time', 'view', 'bookmark', 'view_per_day', 'bookmark_ratio', 'is_r18', 'num_of_pages', 'point'))
         for i, (_, value) in enumerate(data.items()):
@@ -200,11 +195,6 @@ class PixivDataAnalysis():
         print(log)
         return log
     def quartiles(self, data):
-        """
-        计算数据集的四分位数
-        :param data: 数据集，类型为list
-        :return: 四分位数列表，类型为list
-        """
         q1 = np.percentile(data, 25)
         q2 = np.percentile(data, 50)
         q3 = np.percentile(data, 75)
@@ -259,10 +249,16 @@ class PixivDataAnalysis():
         plt.title('Point')
         plt.xlabel('X')
         plt.ylabel('Y')
+        t = time.localtime(time.time())
+        rsu = '{}-{}-{}_{}-{}-{}'.format(t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec)
+        name = '{}-{}'.format(self.name, rsu)
+        name = self.replace_invalid_chars(name)
+        path = os.path.join(self.path, name)
+        plt.savefig(f'{path}.png')
         plt.show()
 
 
-def main(uid, output_dir, cookie, sleep_time, quick_mode, max_num):
+def main(uid, output_dir, cookie, max_num):
     with open(cookie, 'r') as f:
         cookies = f.read().split('\n')
     os.makedirs(output_dir, exist_ok=True)
@@ -270,9 +266,8 @@ def main(uid, output_dir, cookie, sleep_time, quick_mode, max_num):
                             uid=uid,
                             cookies=cookies,
                             output_path=output_dir,
-                            proxies=PROXIES,
-                            sleep_time=sleep_time,
-                            quick_mode=quick_mode)
+                            proxies=PROXIES
+                            )
 
     img_urls = p.get_pages()
     if max_num is not None:
@@ -284,18 +279,17 @@ def main(uid, output_dir, cookie, sleep_time, quick_mode, max_num):
         img_urls = img_urls[:max_num]
     data = p.read_data_from_urls(img_urls)
     log = p.print_data(data, args.max_num)
-    p.show_data(data)
     p.save_data(data, log)
+    p.show_data(data)
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--uid', type=str, required=True)
     parser.add_argument('-c', '--cookie', type=str, default='cookies.txt')
     parser.add_argument('-o', '--output_dir', type=str, default='output/')
-    parser.add_argument('-t', '--sleep_time', type=float, default=1.1)
     parser.add_argument('-m', '--max_num', type=float, default=None)
     args = parser.parse_args()
     PROXIES = {
         'http': 'http://127.0.0.1:7890',
         'https': 'http://127.0.0.1:7890'
     }   
-    main(args.uid, args.output_dir, args.cookie, args.sleep_time, True, args.max_num)
+    main(args.uid, args.output_dir, args.cookie, args.max_num)
