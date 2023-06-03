@@ -19,13 +19,13 @@ from bs4 import BeautifulSoup
 class PixivDataAnalysis():
 
     def __init__(
-                    self,
-                    *, 
-                    uid : str, 
-                    cookies : list,
-                    output_path : str, 
-                    proxies = None,
-                ):
+        self,
+        *, 
+        uid : str, 
+        cookies : list,
+        output_path : str, 
+        proxies = None,
+    ) -> None:
         self.start_time = time.time()
         self.uid = uid
         self.session = requests.Session()
@@ -204,7 +204,7 @@ class PixivDataAnalysis():
         skewness = pd.Series(data).skew()
         return skewness
     def timestamp2str(self, timestamp: float) -> str:
-        timestamp = int(timestamp)
+        timestamp = abs(int(timestamp))
         time_units = [(31536000, "年"), (86400, "日"), (3600, "时"), (60, "分"), (1, "秒")]
         output = ""
         for unit, unit_str in time_units:
@@ -263,11 +263,11 @@ def main(uid, output_dir, cookie, max_num):
         cookies = f.read().split('\n')
     os.makedirs(output_dir, exist_ok=True)
     p = PixivDataAnalysis(  
-                            uid=uid,
-                            cookies=cookies,
-                            output_path=output_dir,
-                            proxies=PROXIES
-                            )
+        uid=uid,
+        cookies=cookies,
+        output_path=output_dir,
+        proxies=PROXIES
+    )
 
     img_urls = p.get_pages()
     if max_num is not None:
