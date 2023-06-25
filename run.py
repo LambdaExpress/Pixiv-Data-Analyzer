@@ -30,14 +30,15 @@ class PixivDataAnalysis():
         self.uid = uid
         self.session = requests.Session()
         self.path = output_path
-        self.headers_list = [{
+        self.headers_list = []
+        for i in range(len(cookies)):
+            temp = {
             "referer": "https://www.pixiv.net/",
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.48",
             'baggage' : 'sentry-environment=production,sentry-release=6560f6c82b0cc2220a31afe4ca436a083210e8c7,sentry-public_key=7b15ebdd9cf64efb88cfab93783df02a,sentry-trace_id=4c3c537d81b4413ba200ce44f4f7e51d,sentry-sample_rate=0.0001',
-        }]
-        self.headers_list = self.headers_list * len(cookies)
-        for index, headers in enumerate(self.headers_list):
-            headers['cookie'] = cookies[index]
+            'cookie' : cookies[i]
+            }
+            self.headers_list.append(temp)
         
         self.proxies = proxies
         self.data = {}
@@ -80,12 +81,12 @@ class PixivDataAnalysis():
             pbar.set_description(f'Pid:{url_id}')
             delta_time = self.get_utc_timestamp() - self.convert_to_utc_timestamp(unformatted_time)
             delta_time += time.time() - self.get_utc_timestamp()
-            
             view_per_day = int(view) / delta_time * 3600 * 24
             bookmark_ratio = float(bookmarkCount) / float(view) * 100
+            bookmarkCount = int(bookmarkCount)
             is_r18 = r18 == 'R-18'
             view = int(view)
-            point = log(view / sqrt(delta_time) * view / log(view, 2), 2)
+            score = log(view / sqrt(delta_time) * view / log(view, 2), 2)
             self.data[index] = [
                 url_id,
                 delta_time,
@@ -95,7 +96,7 @@ class PixivDataAnalysis():
                 bookmark_ratio,
                 is_r18,
                 total,
-                point
+                score
             ]
             pbar.update(1)
         except:
@@ -143,7 +144,7 @@ class PixivDataAnalysis():
             }
             return self.data
     def save_data(self, data : dict, log):
-        a_data=pd.DataFrame(columns=('pid', 'delta_time', 'view', 'bookmark', 'view_per_day', 'bookmark_ratio', 'is_r18', 'num_of_pages', 'point'))
+        a_data=pd.DataFrame(columns=('pid', 'delta_time', 'view', 'bookmark', 'view_per_day', 'bookmark_ratio', 'is_r18', 'num_of_pages', 'score'))
         for i, (_, value) in enumerate(data.items()):
             a_data.loc[i + 1] = value
         t = time.localtime(time.time())
@@ -246,7 +247,7 @@ class PixivDataAnalysis():
         x_point = [x[0] for x in point]
         y_poiny = [x[1] for x in point]
         plt.plot(x_point, y_poiny)
-        plt.title('Point')
+        plt.title('Score')
         plt.xlabel('X')
         plt.ylabel('Y')
         t = time.localtime(time.time())
